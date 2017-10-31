@@ -14,5 +14,5 @@ type IQuery interface {
 	On(tableName string, value interface{}) IQuery
 	Limit(limit int) IQuery
 	Offset(offset int) IQuery
-	Order(field string, direction string)
+	Order(field string, direction string) IQuery
 }
