@@ -21,6 +21,8 @@ type Query struct {
 	ValueFields  []ValueField
 	Dal          *Dal
 	Values       []interface{}
+	OrderBy      string
+	OrderDir     string
 }
 
 // Query runs the query
@@ -122,6 +124,13 @@ func (q *Query) Limit(limit int) *Query {
 // Offset adds an offset clause to the query
 func (q *Query) Offset(offset int) *Query {
 	q.resultOffset = offset
+	return q
+}
+
+// Order adds an orderBy clause to the query
+func (q *Query) Order(field string, direction string) *Query {
+	q.OrderBy = field
+	q.OrderDir = direction
 	return q
 }
 
@@ -228,6 +237,17 @@ func (q *Query) buildSelect() string {
 
 	if len(q.GroupBy) > 0 {
 		query = query + " GROUP BY " + q.GroupBy
+	}
+
+	if len(q.OrderBy) > 0 {
+
+		query = query + " ORDER BY " + q.OrderBy
+
+		if len(q.OrderDir) > 0 {
+			query = query + " " + q.OrderDir
+		} else {
+			query = query + " ASC"
+		}
 	}
 
 	if q.resultLimit > 0 {
