@@ -23,39 +23,15 @@ type Query struct {
 	Values       []interface{}
 }
 
-//SQL returns the raw sql string
-func (q *Query) SQL() string {
-
-	var sql string
-
-	switch q.QueryType {
-	case "select":
-		sql = q.Select()
-	case "update":
-		sql = q.Update()
-	case "delete":
-		sql = q.Delete()
-	case "insert":
-		sql = q.Insert()
-	default:
-		panic("Unknown query type")
-	}
-
-	// fmt.Printf("SQL: %s\n", sql)
-
-	return sql
-}
-
 // Query runs the query
 func (q *Query) Query() (*sql.Rows, error) {
-	query := q.SQL()
-	// for _, filter := range q.Filters
+	query := q.buildSQL()
 	return q.Dal.Connection.Query(query, q.Values...)
 }
 
 // Exec executes a sql statement
 func (q *Query) Exec() (result sql.Result, e error) {
-	query := q.SQL()
+	query := q.buildSQL()
 	var stmt *sql.Stmt
 	stmt, e = q.Dal.Connection.Prepare(query)
 	if e != nil {
@@ -90,8 +66,66 @@ func (q *Query) Where(name string, value interface{}) *Query {
 	return q
 }
 
-// Insert builds an insert statement
-func (q *Query) Insert() string {
+// Set sets a value for an insert or update statement
+func (q *Query) Set(fieldName string, value interface{}) *Query {
+
+	q.ValueFields = append(q.ValueFields, ValueField{
+		Name:  fieldName,
+		Value: value,
+	})
+	return q
+}
+
+// Join adds a join clause on to a select statement
+func (q *Query) Join(tableName string) *Query {
+
+	var joinTable *Table
+	var ok bool
+
+	if joinTable, ok = q.Dal.Schema.Tables[tableName]; !ok {
+		panic("Invaild table name used in join clause")
+	}
+
+	q.Joins = append(q.Joins, Join{
+		Table:  joinTable,
+		Fields: []ValueField{},
+	})
+
+	return q
+}
+
+// On adds an on clause to the most recent join
+func (q *Query) On(fieldName string, value interface{}) *Query {
+
+	numJoins := len(q.Joins)
+	// Get the most recent joins
+	if numJoins == 0 {
+		panic("Cannot call `On` method before any Joins have been created")
+	}
+
+	latestJoinIdx := numJoins - 1
+
+	q.Joins[latestJoinIdx].Fields = append(q.Joins[latestJoinIdx].Fields, ValueField{
+		fieldName,
+		value,
+	})
+
+	return q
+}
+
+// Limit adds a limit clause to the query
+func (q *Query) Limit(limit int) *Query {
+	q.resultLimit = limit
+	return q
+}
+
+// Offset adds an offset clause to the query
+func (q *Query) Offset(offset int) *Query {
+	q.resultOffset = offset
+	return q
+}
+
+func (q *Query) buildInsert() string {
 
 	if len(q.ValueFields) > 0 {
 		fields := []string{}
@@ -109,18 +143,7 @@ func (q *Query) Insert() string {
 	panic("No fields to update")
 }
 
-// Set sets a value for an insert or update statement
-func (q *Query) Set(fieldName string, value interface{}) *Query {
-
-	q.ValueFields = append(q.ValueFields, ValueField{
-		Name:  fieldName,
-		Value: value,
-	})
-	return q
-}
-
-// Update builds an update statement
-func (q *Query) Update() string {
+func (q *Query) buildUpdate() string {
 
 	where := q.buildWhere()
 	setFieldStrings := []string{}
@@ -138,16 +161,14 @@ func (q *Query) Update() string {
 	return fmt.Sprintf("UPDATE `%s` `%s` SET %s WHERE %s", q.Table.Name, q.Table.Alias, strings.Join(setFieldStrings, ", "), where)
 }
 
-// Delete builds a delete query
-func (q *Query) Delete() string {
+func (q *Query) buildDelete() string {
 
 	where := q.buildWhere()
 
 	return fmt.Sprintf("DELETE FROM `%s` USING `%s` AS `%s` WHERE %s", q.Table.Alias, q.Table.Name, q.Table.Alias, where)
 }
 
-// Select builds a select statement
-func (q *Query) Select() string {
+func (q *Query) buildSelect() string {
 
 	query := "SELECT "
 	colStrings := []string{}
@@ -220,75 +241,6 @@ func (q *Query) Select() string {
 	return query
 }
 
-func parseValue(field interface{}) string {
-
-	var value string
-
-	switch field.(type) {
-	case int:
-		value = strconv.Itoa(field.(int))
-	case int64:
-		value = strconv.FormatInt(field.(int64), 10)
-	case float64:
-		value = strconv.FormatFloat(field.(float64), 'E', -1, 64)
-	case string:
-		value = "'" + field.(string) + "'"
-	default:
-		panic(fmt.Sprintf("Unknown type for value: %v", field))
-	}
-
-	return value
-}
-
-// Join adds a join clause on to a select statement
-func (q *Query) Join(tableName string) *Query {
-
-	var joinTable *Table
-	var ok bool
-
-	if joinTable, ok = q.Dal.Schema.Tables[tableName]; !ok {
-		panic("Invaild table name used in join clause")
-	}
-
-	q.Joins = append(q.Joins, Join{
-		Table:  joinTable,
-		Fields: []ValueField{},
-	})
-
-	return q
-}
-
-// On adds an on clause to the most recent join
-func (q *Query) On(fieldName string, value interface{}) *Query {
-
-	numJoins := len(q.Joins)
-	// Get the most recent joins
-	if numJoins == 0 {
-		panic("Cannot call `On` method before any Joins have been created")
-	}
-
-	latestJoinIdx := numJoins - 1
-
-	q.Joins[latestJoinIdx].Fields = append(q.Joins[latestJoinIdx].Fields, ValueField{
-		fieldName,
-		value,
-	})
-
-	return q
-}
-
-// Limit adds a limit clause to the query
-func (q *Query) Limit(limit int) *Query {
-	q.resultLimit = limit
-	return q
-}
-
-// Offset adds an offset clause to the query
-func (q *Query) Offset(offset int) *Query {
-	q.resultOffset = offset
-	return q
-}
-
 func (q *Query) parseFilterName(filterName string) (realFilterName string, eq string) {
 
 	eq = "="
@@ -353,4 +305,48 @@ func (q *Query) buildWhere() string {
 	}
 
 	return where
+}
+
+//SQL returns the raw sql string
+func (q *Query) buildSQL() string {
+
+	var sql string
+
+	switch q.QueryType {
+	case "select":
+		sql = q.buildSelect()
+	case "update":
+		sql = q.buildUpdate()
+	case "delete":
+		sql = q.buildDelete()
+	case "insert":
+		sql = q.buildInsert()
+	default:
+		panic("Unknown query type")
+	}
+
+	// fmt.Printf("SQL: %s\n", sql)
+
+	return sql
+}
+
+// @TODO Remove
+func parseValue(field interface{}) string {
+
+	var value string
+
+	switch field.(type) {
+	case int:
+		value = strconv.Itoa(field.(int))
+	case int64:
+		value = strconv.FormatInt(field.(int64), 10)
+	case float64:
+		value = strconv.FormatFloat(field.(float64), 'E', -1, 64)
+	case string:
+		value = "'" + field.(string) + "'"
+	default:
+		panic(fmt.Sprintf("Unknown type for value: %v", field))
+	}
+
+	return value
 }
