@@ -1,13 +1,11 @@
 package dal
 
 import (
-	"database/sql"
 	"fmt"
 	"strconv"
 )
 
-type Scanner func(*sql.Rows, interface{})
-
+// NewSchema defines a new schema
 func NewSchema(dal *Dal, name string) *Schema {
 
 	s := new(Schema)
@@ -32,36 +30,7 @@ func (s *Schema) AddTable(name string, fields []string) error {
 	if len(fields) > 0 {
 		t.AddFields(fields)
 	}
-	return s.Define(t)
-}
-
-// Define adds a table to the set of tables in the schema
-func (s *Schema) Define(t *Table) (e error) {
-
-	var ok bool
-
-	if _, ok = s.Tables[t.Name]; ok {
-		e = fmt.Errorf("a table named `%s` has already been defined", t.Name)
-		return
-	}
-
-	alias := t.Name[0:1]
-	tryAlias := alias
-	tries := 0
-	for {
-		if _, ok = s.Aliases[tryAlias]; !ok {
-			alias = tryAlias
-			break
-		}
-
-		tries = tries + 1
-		tryAlias = alias + strconv.Itoa(tries)
-	}
-
-	t.Alias = alias
-	s.Tables[t.Name] = t
-	s.Aliases[alias] = t.Name
-	return
+	return s.define(t)
 }
 
 // Table gets a table
@@ -102,4 +71,33 @@ func (s *Schema) newQuery(tableName string, queryType string) *Query {
 	q.Table = s.Table(tableName)
 	q.QueryType = queryType
 	return q
+}
+
+// define adds a table to the set of tables in the schema
+func (s *Schema) define(t *Table) (e error) {
+
+	var ok bool
+
+	if _, ok = s.Tables[t.Name]; ok {
+		e = fmt.Errorf("a table named `%s` has already been defined", t.Name)
+		return
+	}
+
+	alias := t.Name[0:1]
+	tryAlias := alias
+	tries := 0
+	for {
+		if _, ok = s.Aliases[tryAlias]; !ok {
+			alias = tryAlias
+			break
+		}
+
+		tries = tries + 1
+		tryAlias = alias + strconv.Itoa(tries)
+	}
+
+	t.Alias = alias
+	s.Tables[t.Name] = t
+	s.Aliases[alias] = t.Name
+	return
 }
