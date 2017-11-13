@@ -46,26 +46,26 @@ func (s *Schema) Table(name string) (t *Table) {
 }
 
 // Select starts a select statement
-func (s *Schema) Select(tableName string) *Query {
+func (s *Schema) Select(tableName string) IQuery {
 	return s.newQuery(tableName, "select")
 }
 
 // Update starts an update query
-func (s *Schema) Update(tableName string) *Query {
+func (s *Schema) Update(tableName string) IQuery {
 	return s.newQuery(tableName, "update")
 }
 
 // Delete starts a delete query
-func (s *Schema) Delete(tableName string) *Query {
+func (s *Schema) Delete(tableName string) IQuery {
 	return s.newQuery(tableName, "delete")
 }
 
 // Insert starts an insert query
-func (s *Schema) Insert(tableName string) *Query {
+func (s *Schema) Insert(tableName string) IQuery {
 	return s.newQuery(tableName, "insert")
 }
 
-func (s *Schema) newQuery(tableName string, queryType string) *Query {
+func (s *Schema) newQuery(tableName string, queryType string) IQuery {
 	q := new(Query)
 	q.Dal = s.Dal
 	q.Table = s.Table(tableName)

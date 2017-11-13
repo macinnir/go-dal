@@ -51,20 +51,20 @@ func (q *Query) Exec() (result sql.Result, e error) {
 }
 
 // And adds an and conjuction in the where clause
-func (q *Query) And() *Query {
+func (q *Query) And() IQuery {
 
 	q.Where("#and#", "")
 	return q
 }
 
 // Or adds an or conjuction in the where clause
-func (q *Query) Or() *Query {
+func (q *Query) Or() IQuery {
 	q.Where("#or#", "")
 	return q
 }
 
 // Where adds a filter on to the where clause
-func (q *Query) Where(name string, value interface{}) *Query {
+func (q *Query) Where(name string, value interface{}) IQuery {
 
 	q.Filters = append(q.Filters, ValueField{
 		Name:  name,
@@ -75,7 +75,7 @@ func (q *Query) Where(name string, value interface{}) *Query {
 }
 
 // Set sets a value for an insert or update statement
-func (q *Query) Set(fieldName string, value interface{}) *Query {
+func (q *Query) Set(fieldName string, value interface{}) IQuery {
 
 	q.ValueFields = append(q.ValueFields, ValueField{
 		Name:  fieldName,
@@ -85,7 +85,7 @@ func (q *Query) Set(fieldName string, value interface{}) *Query {
 }
 
 // Join adds a join clause on to a select statement
-func (q *Query) Join(tableName string) *Query {
+func (q *Query) Join(tableName string) IQuery {
 
 	var joinTable *Table
 	var ok bool
@@ -103,7 +103,7 @@ func (q *Query) Join(tableName string) *Query {
 }
 
 // OnValue adds an on clause to the most recent join
-func (q *Query) OnValue(fieldName string, value interface{}) *Query {
+func (q *Query) OnValue(fieldName string, value interface{}) IQuery {
 
 	numJoins := len(q.Joins)
 	// Get the most recent joins
@@ -123,7 +123,7 @@ func (q *Query) OnValue(fieldName string, value interface{}) *Query {
 }
 
 // OnField adds an on clause to the most recent join that joins with the field of another table
-func (q *Query) OnField(fieldName string, joinTable string, joinField string) *Query {
+func (q *Query) OnField(fieldName string, joinTable string, joinField string) IQuery {
 
 	numJoins := len(q.Joins)
 	// Get the most recent joins
@@ -144,19 +144,19 @@ func (q *Query) OnField(fieldName string, joinTable string, joinField string) *Q
 }
 
 // Limit adds a limit clause to the query
-func (q *Query) Limit(limit int) *Query {
+func (q *Query) Limit(limit int) IQuery {
 	q.resultLimit = limit
 	return q
 }
 
 // Offset adds an offset clause to the query
-func (q *Query) Offset(offset int) *Query {
+func (q *Query) Offset(offset int) IQuery {
 	q.resultOffset = offset
 	return q
 }
 
 // Order adds an orderBy clause to the query
-func (q *Query) Order(field string, direction string) *Query {
+func (q *Query) Order(field string, direction string) IQuery {
 	q.OrderBy = field
 	q.OrderDir = direction
 	return q

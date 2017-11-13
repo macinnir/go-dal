@@ -39,7 +39,7 @@ func TestSchema(t *testing.T) {
 		"name",
 	})
 
-	var q *Query
+	var q IQuery
 	var selectString string
 
 	q = s.Select("foe")
@@ -59,8 +59,8 @@ func TestSchema(t *testing.T) {
 	q = s.Update("foe").Set("name", "Another name").Set("fooId", 123).Where("id", 123)
 	updateString := q.ToSQL()
 
-	if q.Values[0] != "Another name" {
-		t.Errorf("Incorrect values. Expected: %s Actual: %s", "Another name", q.Values[0])
+	if q.GetValues()[0] != "Another name" {
+		t.Errorf("Incorrect values. Expected: %s Actual: %s", "Another name", q.GetValues()[0])
 	}
 
 	if updateString != expectedUpdateString {
