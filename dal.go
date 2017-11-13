@@ -2,8 +2,6 @@ package dal
 
 import (
 	"database/sql"
-	// Mysql
-	_ "github.com/go-sql-driver/mysql"
 )
 
 // Dal manages the connection to and the querying of the database

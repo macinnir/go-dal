@@ -1,18 +1,16 @@
 package dal
 
 import (
-	"fmt"
+	"database/sql"
 	"testing"
 )
 
 func TestSchema(t *testing.T) {
 
-	schemaName := "foo"
-	s := NewSchema(schemaName)
+	conn := new(sql.DB)
+	d := NewDal(conn)
 
-	if s.Name != schemaName {
-		t.Errorf("Schema name should have been '%s'", schemaName)
-	}
+	s := d.Schema
 
 	s.AddTable("foo", []string{})
 	if s.Table("foo").Alias != "f" {
@@ -30,25 +28,57 @@ func TestSchema(t *testing.T) {
 		"createdAt",
 		"updatedAt",
 		"fooId",
+		"foo2Id",
 	})
 	if s.Table("foe").Alias != "f1" {
 		t.Errorf("Table alias should have been '%s'", "f1")
 	}
 
-	selectString := s.Select("foe").Join("foo").On("fooId", "id").Where("name", "foo").Where("!fooId", 123).Or().Where("foodId", 111).SQL()
-	fmt.Printf("SELECT: %s\n", selectString)
+	s.AddTable("foo2", []string{
+		"id",
+		"name",
+	})
 
-	// updateString :=
-	s.Update("foe").Set("name", "Another name").Set("fooId", 123).Where("id", 123).SQL()
-	// fmt.Printf("UPDATE: %s\n", updateString)
+	var q *Query
+	var selectString string
 
-	// deleteString :=
-	s.Delete("foe").Where("id", 1).SQL()
-	// fmt.Printf("DELETE: %s\n", deleteString)
+	q = s.Select("foe")
+	q.Join("foo")
+	q.OnField("fooId", "foe", "id")
+	q.Join("foo2").OnField("id", "foe", "foo2Id")
+	q.Where("name", "foo").Where("!fooId", 123).Or().Where("foodId", 111).ToSQL()
 
-	// insertString :=
-	s.Insert("foe").Set("name", "foo").Set("fooId", 1).SQL()
-	// fmt.Printf("INSERT: %s\n", insertString)
+	selectString = q.ToSQL()
+
+	expectedSelectString := "SELECT `f1`.`id`, `f1`.`name`, `f1`.`createdAt`, `f1`.`updatedAt`, `f1`.`fooId`, `f1`.`foo2Id` FROM `foe` `f1` JOIN `foo` `f` ON `f`.`fooId` = `f1`.`id` JOIN `foo2` `f2` ON `f2`.`id` = `f1`.`foo2Id` WHERE `f1`.`name` = ? AND `f1`.`fooId` != ? OR `f1`.`foodId` = ?"
+	if selectString != expectedSelectString {
+		t.Errorf("Actual Query: \n\n %s\n\nExpeted:\n\n %s\n\n", selectString, expectedSelectString)
+	}
+
+	expectedUpdateString := "UPDATE `foe` `f1` SET `f1`.`name` = ?, `f1`.`fooId` = ? WHERE `f1`.`id` = ?"
+	q = s.Update("foe").Set("name", "Another name").Set("fooId", 123).Where("id", 123)
+	updateString := q.ToSQL()
+
+	if q.Values[0] != "Another name" {
+		t.Errorf("Incorrect values. Expected: %s Actual: %s", "Another name", q.Values[0])
+	}
+
+	if updateString != expectedUpdateString {
+		t.Errorf("Query %s not correct", updateString)
+	}
+
+	expectedDeleteString := "DELETE FROM `f1` USING `foe` AS `f1` WHERE `f1`.`id` = ?"
+	deleteString := s.Delete("foe").Where("id", 1).ToSQL()
+	if deleteString != expectedDeleteString {
+		t.Errorf("Query %s not correct", deleteString)
+	}
+
+	expectedInsertString := "INSERT INTO `foe` (`name`,`fooId`) VALUES (?,?)"
+	insertString := s.Insert("foe").Set("name", "foo").Set("fooId", 1).ToSQL()
+	if insertString != expectedInsertString {
+		t.Errorf("Query %s not correct", insertString)
+	}
+
 	// q.Set
 	// q.Update()
 }

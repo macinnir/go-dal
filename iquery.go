@@ -11,7 +11,8 @@ type IQuery interface {
 	Where(name string, value interface{}) IQuery
 	Set(fieldName string, value interface{}) IQuery
 	Join(tableName string) IQuery
-	On(tableName string, value interface{}) IQuery
+	OnValue(tableName string, value interface{}) IQuery
+	OnField(fieldName string, joinTable string, joinField string) IQuery
 	Limit(limit int) IQuery
 	Offset(offset int) IQuery
 	Order(field string, direction string) IQuery

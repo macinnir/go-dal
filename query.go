@@ -9,6 +9,7 @@ import (
 
 // Query defines a query to be made against the database
 type Query struct {
+	sql          string
 	Table        *Table
 	Filters      []ValueField
 	Params       []string
@@ -23,6 +24,11 @@ type Query struct {
 	Values       []interface{}
 	OrderBy      string
 	OrderDir     string
+}
+
+// ToSQL returns the generated sql string
+func (q *Query) ToSQL() string {
+	return q.buildSQL()
 }
 
 // Query runs the query
@@ -90,14 +96,14 @@ func (q *Query) Join(tableName string) *Query {
 
 	q.Joins = append(q.Joins, Join{
 		Table:  joinTable,
-		Fields: []ValueField{},
+		Fields: []JoinField{},
 	})
 
 	return q
 }
 
-// On adds an on clause to the most recent join
-func (q *Query) On(fieldName string, value interface{}) *Query {
+// OnValue adds an on clause to the most recent join
+func (q *Query) OnValue(fieldName string, value interface{}) *Query {
 
 	numJoins := len(q.Joins)
 	// Get the most recent joins
@@ -107,10 +113,32 @@ func (q *Query) On(fieldName string, value interface{}) *Query {
 
 	latestJoinIdx := numJoins - 1
 
-	q.Joins[latestJoinIdx].Fields = append(q.Joins[latestJoinIdx].Fields, ValueField{
-		fieldName,
-		value,
-	})
+	joinField := JoinField{}
+	joinField.FieldName = fieldName
+	joinField.Value = value
+
+	q.Joins[latestJoinIdx].Fields = append(q.Joins[latestJoinIdx].Fields, joinField)
+
+	return q
+}
+
+// OnField adds an on clause to the most recent join that joins with the field of another table
+func (q *Query) OnField(fieldName string, joinTable string, joinField string) *Query {
+
+	numJoins := len(q.Joins)
+	// Get the most recent joins
+	if numJoins == 0 {
+		panic("Cannot call `On` method before any Joins have been created")
+	}
+
+	latestJoinIdx := numJoins - 1
+
+	join := JoinField{}
+	join.FieldName = fieldName
+	join.JoinTable = joinTable
+	join.JoinField = joinField
+
+	q.Joins[latestJoinIdx].Fields = append(q.Joins[latestJoinIdx].Fields, join)
 
 	return q
 }
@@ -154,7 +182,6 @@ func (q *Query) buildInsert() string {
 
 func (q *Query) buildUpdate() string {
 
-	where := q.buildWhere()
 	setFieldStrings := []string{}
 
 	if len(q.ValueFields) > 0 {
@@ -166,6 +193,8 @@ func (q *Query) buildUpdate() string {
 			setFieldStrings = append(setFieldStrings, fmt.Sprintf("`%s`.`%s` = ?", q.Table.Alias, updateField.Name))
 		}
 	}
+
+	where := q.buildWhere()
 
 	return fmt.Sprintf("UPDATE `%s` `%s` SET %s WHERE %s", q.Table.Name, q.Table.Alias, strings.Join(setFieldStrings, ", "), where)
 }
@@ -186,7 +215,7 @@ func (q *Query) buildSelect() string {
 		colStrings = append(colStrings, fmt.Sprintf("`%s`.`%s`", q.Table.Alias, f.Name))
 	}
 
-	query = query + strings.Join(colStrings, ", ") + " \nFROM `" + q.Table.Name + "` `" + q.Table.Alias + "`"
+	query = query + strings.Join(colStrings, ", ") + " FROM `" + q.Table.Name + "` `" + q.Table.Alias + "`"
 
 	if len(q.Joins) > 0 {
 
@@ -198,41 +227,29 @@ func (q *Query) buildSelect() string {
 
 			for _, f := range j.Fields {
 
-				onField, eq := q.parseFilterName(f.Name)
+				onField, eq := q.parseFilterName(f.FieldName)
 
-				onField = fmt.Sprintf("`%s`.`%s` %s ?", j.Table.Alias, onField, eq)
-				q.Values = append(q.Values, f.Value)
-				// switch f.Value.(type) {
-				// case int:
-				// 	onField = fmt.Sprintf("`%s`.`%s` %s %d", j.Table.Alias, onField, eq, f.Value.(int))
-				// case int64:
-				// 	onField = fmt.Sprintf("`%s`.`%s` %s %d", j.Table.Alias, onField, eq, f.Value.(int64))
-				// case float64:
-				// 	onField = fmt.Sprintf("`%s`.`%s` %s %f", j.Table.Alias, onField, eq, f.Value.(float64))
-				// case string:
-				// 	val := f.Value.(string)
-				// 	if _, ok := q.Table.Fields[val]; ok {
-				// 		onField = fmt.Sprintf("`%s`.`%s` %s `%s`.`%s`", j.Table.Alias, onField, eq, q.Table.Alias, val)
-				// 	} else {
-				// 		onField = fmt.Sprintf("`%s`.`%s` %s '%s'", j.Table.Alias, onField, eq, val)
-				// 	}
-				// default:
-				// 	panic(fmt.Sprintf("Unknown type for field %s.%v", j.Table.Name, f.Value))
-				// }
+				if len(f.JoinTable) > 0 && len(f.JoinField) > 0 {
+					onField = fmt.Sprintf("`%s`.`%s` %s `%s`.`%s`", j.Table.Alias, onField, eq, q.Dal.Schema.Tables[f.JoinTable].Alias, f.JoinField)
+				} else {
+					onField = fmt.Sprintf("`%s`.`%s` %s ?", j.Table.Alias, onField, eq)
+					q.Values = append(q.Values, f.Value)
+				}
+
 				onFields = append(onFields, onField)
 			}
 
 			joinString := fmt.Sprintf("JOIN `%s` `%s` ON %s", j.Table.Name, j.Table.Alias, strings.Join(onFields, " AND "))
-			joinStrings = joinStrings + "\n" + joinString
+			joinStrings = joinStrings + " " + joinString
 		}
 
-		query = query + "\n" + joinStrings
+		query = query + joinStrings
 	}
 
 	where := q.buildWhere()
 
 	if len(where) > 0 {
-		query = query + " \nWHERE " + where
+		query = query + " WHERE " + where
 	}
 
 	if len(q.GroupBy) > 0 {
@@ -330,24 +347,26 @@ func (q *Query) buildWhere() string {
 //SQL returns the raw sql string
 func (q *Query) buildSQL() string {
 
-	var sql string
+	if len(q.sql) > 0 {
+		return q.sql
+	}
 
 	switch q.QueryType {
 	case "select":
-		sql = q.buildSelect()
+		q.sql = q.buildSelect()
 	case "update":
-		sql = q.buildUpdate()
+		q.sql = q.buildUpdate()
 	case "delete":
-		sql = q.buildDelete()
+		q.sql = q.buildDelete()
 	case "insert":
-		sql = q.buildInsert()
+		q.sql = q.buildInsert()
 	default:
 		panic("Unknown query type")
 	}
 
 	// fmt.Printf("SQL: %s\n", sql)
 
-	return sql
+	return q.sql
 }
 
 // @TODO Remove
