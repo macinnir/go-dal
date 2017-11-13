@@ -16,4 +16,5 @@ type IQuery interface {
 	Limit(limit int) IQuery
 	Offset(offset int) IQuery
 	Order(field string, direction string) IQuery
+	ToSQL() string
 }
