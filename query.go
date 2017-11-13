@@ -162,6 +162,11 @@ func (q *Query) Order(field string, direction string) *Query {
 	return q
 }
 
+// GetValues returns the values used for the current query
+func (q *Query) GetValues() []interface{} {
+	return q.Values
+}
+
 func (q *Query) buildInsert() string {
 
 	if len(q.ValueFields) > 0 {

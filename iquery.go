@@ -17,4 +17,5 @@ type IQuery interface {
 	Offset(offset int) IQuery
 	Order(field string, direction string) IQuery
 	ToSQL() string
+	GetValues() []interface{}
 }
