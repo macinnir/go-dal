@@ -9,9 +9,12 @@ import (
 
 // Query defines a query to be made against the database
 type Query struct {
-	sql          string
-	Table        *Table
-	Filters      []ValueField
+	sql   string
+	Table *Table
+
+	// Filters are the phrases used in the where clause
+	Filters []ValueField
+
 	Params       []string
 	Joins        []Join
 	resultLimit  int
@@ -24,6 +27,9 @@ type Query struct {
 	Values       []interface{}
 	OrderBy      string
 	OrderDir     string
+	// SelectJoinFields is a collection of fields included in the list of fields selected
+	// Format: `joinedTablePrefix`.`fieldName`
+	SelectJoinFields []string
 }
 
 // ToSQL returns the generated sql string
@@ -143,6 +149,12 @@ func (q *Query) OnField(fieldName string, joinTable string, joinField string) IQ
 	return q
 }
 
+// SelectJoinField uses a field from a joined table in the select list
+func (q *Query) SelectJoinField(joinTable string, joinField string, as string) IQuery {
+	q.SelectJoinFields = append(q.SelectJoinFields, "`"+q.Dal.Schema.Tables[joinTable].Alias+"`.`"+joinField+"` as `"+as+"`")
+	return q
+}
+
 // Limit adds a limit clause to the query
 func (q *Query) Limit(limit int) IQuery {
 	q.resultLimit = limit
@@ -218,6 +230,12 @@ func (q *Query) buildSelect() string {
 	for _, fk := range q.Table.FieldKeys {
 		f := q.Table.Fields[fk]
 		colStrings = append(colStrings, fmt.Sprintf("`%s`.`%s`", q.Table.Alias, f.Name))
+	}
+
+	if len(q.SelectJoinFields) > 0 {
+		for _, jf := range q.SelectJoinFields {
+			colStrings = append(colStrings, fmt.Sprintf("%s", jf))
+		}
 	}
 
 	query = query + strings.Join(colStrings, ", ") + " FROM `" + q.Table.Name + "` `" + q.Table.Alias + "`"

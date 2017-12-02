@@ -18,4 +18,5 @@ type IQuery interface {
 	Order(field string, direction string) IQuery
 	ToSQL() string
 	GetValues() []interface{}
+	SelectJoinField(tableName string, fieldName string, as string) IQuery
 }

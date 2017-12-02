@@ -55,6 +55,13 @@ func TestSchema(t *testing.T) {
 		t.Errorf("Actual Query: \n\n %s\n\nExpeted:\n\n %s\n\n", selectString, expectedSelectString)
 	}
 
+	expectedSelectStringWithJoinField := "SELECT `f1`.`id`, `f1`.`name`, `f1`.`createdAt`, `f1`.`updatedAt`, `f1`.`fooId`, `f1`.`foo2Id`, `f2`.`id` as `f2Id` FROM `foe` `f1` JOIN `foo` `f` ON `f`.`fooId` = `f1`.`id` JOIN `foo2` `f2` ON `f2`.`id` = `f1`.`foo2Id` WHERE `f1`.`name` = ? AND `f1`.`fooId` != ? OR `f1`.`foodId` = ?"
+
+	q.SelectJoinField("foo2", "id", "fooId")
+
+	if selectString != expectedSelectString {
+		t.Errorf("Actual Query: \n\n %s\n\nExpeted:\n\n %s\n\n", selectString, expectedSelectStringWithJoinField)
+	}
 	expectedUpdateString := "UPDATE `foe` `f1` SET `f1`.`name` = ?, `f1`.`fooId` = ? WHERE `f1`.`id` = ?"
 	q = s.Update("foe").Set("name", "Another name").Set("fooId", 123).Where("id", 123)
 	updateString := q.ToSQL()
