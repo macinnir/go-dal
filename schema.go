@@ -65,6 +65,11 @@ func (s *Schema) Insert(tableName string) IQuery {
 	return s.newQuery(tableName, "insert")
 }
 
+// Count starts a count query
+func (s *Schema) Count(tableName string) IQuery {
+	return s.newQuery(tableName, "count")
+}
+
 func (s *Schema) newQuery(tableName string, queryType string) IQuery {
 	q := new(Query)
 	q.Dal = s.Dal

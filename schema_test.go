@@ -86,6 +86,12 @@ func TestSchema(t *testing.T) {
 		t.Errorf("Query %s not correct", insertString)
 	}
 
+	countString := s.Count("foo").Where("fooId", 123).ToSQL()
+	expectedCountString := "SELECT COUNT(DISTINCT `f`.`id`) FROM `foo` `f` WHERE `f`.`fooId` = ?"
+	if countString != expectedCountString {
+		t.Errorf("Query %s not correct", countString)
+	}
+
 	// q.Set
 	// q.Update()
 }

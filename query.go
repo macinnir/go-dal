@@ -223,6 +223,18 @@ func (q *Query) buildDelete() string {
 	return fmt.Sprintf("DELETE FROM `%s` USING `%s` AS `%s` WHERE %s", q.Table.Alias, q.Table.Name, q.Table.Alias, where)
 }
 
+func (q *Query) buildCount() string {
+	query := "SELECT COUNT(DISTINCT " + fmt.Sprintf("`%s`.`%s`", q.Table.Alias, q.Table.Fields["id"].Name) + ") FROM `" + q.Table.Name + "` `" + q.Table.Alias + "`"
+
+	where := q.buildWhere()
+
+	if len(where) > 0 {
+		query = query + " WHERE " + where
+	}
+
+	return query
+}
+
 func (q *Query) buildSelect() string {
 
 	query := "SELECT "
@@ -383,6 +395,8 @@ func (q *Query) buildSQL() string {
 		q.sql = q.buildDelete()
 	case "insert":
 		q.sql = q.buildInsert()
+	case "count":
+		q.sql = q.buildCount()
 	default:
 		panic("Unknown query type")
 	}
