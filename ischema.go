@@ -1,5 +1,7 @@
 package dal
 
+import "database/sql"
+
 // ISchema represents DAL schema methods
 type ISchema interface {
 	Select(tableName string) IQuery
@@ -8,4 +10,6 @@ type ISchema interface {
 	Insert(tableName string) IQuery
 	AddTable(name string, fields []string) error
 	Table(name string) (t *Table)
+	Exec(query string, args ...interface{}) (e error)
+	Query(query string, args ...interface{}) (result *sql.Rows, e error)
 }
