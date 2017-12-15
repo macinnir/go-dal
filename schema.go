@@ -1,6 +1,7 @@
 package dal
 
 import (
+	"database/sql"
 	"fmt"
 	"strconv"
 )
@@ -68,6 +69,23 @@ func (s *Schema) Insert(tableName string) IQuery {
 // Count starts a count query
 func (s *Schema) Count(tableName string) IQuery {
 	return s.newQuery(tableName, "count")
+}
+
+func (s *Schema) Exec(query string, args ...interface{}) (e error) {
+
+	var stmt *sql.Stmt
+	stmt, e = s.Dal.Connection.Prepare(query)
+	if e != nil {
+		return
+	}
+
+	_, e = stmt.Exec(args...)
+	return
+}
+
+func (s *Schema) Query(query string, args ...interface{}) (result *sql.Rows, e error) {
+	result, e = s.Dal.Connection.Query(query, args...)
+	return
 }
 
 func (s *Schema) newQuery(tableName string, queryType string) IQuery {
