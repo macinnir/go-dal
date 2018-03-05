@@ -25,6 +25,11 @@ type Schema struct {
 	Dal     *Dal
 }
 
+// GetTables lists the available tables
+func (s *Schema) GetTables() map[string]*Table {
+	return s.Tables
+}
+
 // AddTable adds a table to the schema
 func (s *Schema) AddTable(name string, fields []string) error {
 	t := NewTable(name)

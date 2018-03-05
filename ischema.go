@@ -12,4 +12,5 @@ type ISchema interface {
 	Table(name string) (t *Table)
 	Exec(query string, args ...interface{}) (e error)
 	Query(query string, args ...interface{}) (result *sql.Rows, e error)
+	GetTables() map[string]*Table
 }
