@@ -2,6 +2,7 @@ package dal
 
 import (
 	"database/sql"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"testing"
 )
 
@@ -94,4 +95,45 @@ func TestSchema(t *testing.T) {
 
 	// q.Set
 	// q.Update()
+}
+
+func addMockSchemas(schema *Schema) {
+
+	schema.AddTable(
+		"User",
+		[]string{
+			"UserID",
+			"Username",
+			"Email",
+			"Password",
+		})
+
+}
+
+func TestMockSql(t *testing.T) {
+	dbMock, sqlMock, e := sqlmock.New()
+	if e != nil {
+		t.Fatalf("an error '%s' was not expected when opening an stub database connection", e)
+	}
+
+	defer dbMock.Close()
+
+	// mock.ExpectBegin()
+	sqlMock.ExpectPrepare("^INSERT (.+)")
+	sqlMock.ExpectExec().WithArgs("TestUser1", "testuser1@nowhere.com", "encryptedPassword").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	d := NewDal(dbMock)
+	addMockSchemas(d.Schema)
+	q := d.Schema.Insert("User")
+	q.Set("Username", "TestUser1")
+	q.Set("Email", "testuser1@nowhere.com")
+	q.Set("Password", "encryptedPassword")
+	if _, e = q.Exec(); e != nil {
+		t.Error(e)
+	}
+
+	if e = sqlMock.ExpectationsWereMet(); e != nil {
+		t.Errorf("there were unfulfilled expectations: %s", e.Error())
+	}
+
 }
