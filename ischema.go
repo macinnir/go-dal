@@ -10,7 +10,7 @@ type ISchema interface {
 	Insert(tableName string) IQuery
 	AddTable(name string, fields []string) error
 	Table(name string) (t *Table)
-	Exec(query string, args ...interface{}) (e error)
+	Exec(query string, args ...interface{}) (sql.Result, error)
 	Query(query string, args ...interface{}) (result *sql.Rows, e error)
 	GetTables() map[string]*Table
 }

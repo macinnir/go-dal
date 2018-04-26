@@ -76,6 +76,7 @@ func (s *Schema) Count(tableName string) IQuery {
 	return s.newQuery(tableName, "count")
 }
 
+// Exec prepares and executes the query
 func (s *Schema) Exec(query string, args ...interface{}) (sql.Result, error) {
 
 	var e error
@@ -87,6 +88,7 @@ func (s *Schema) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return stmt.Exec(args...)
 }
 
+// Query runs sql.Query and returns the results
 func (s *Schema) Query(query string, args ...interface{}) (result *sql.Rows, e error) {
 	result, e = s.Dal.Connection.Query(query, args...)
 	return
