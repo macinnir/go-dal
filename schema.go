@@ -71,16 +71,15 @@ func (s *Schema) Count(tableName string) IQuery {
 	return s.newQuery(tableName, "count")
 }
 
-func (s *Schema) Exec(query string, args ...interface{}) (e error) {
+func (s *Schema) Exec(query string, args ...interface{}) (sql.Result, error) {
 
+	var e error
 	var stmt *sql.Stmt
 	stmt, e = s.Dal.Connection.Prepare(query)
 	if e != nil {
-		return
+		return nil, e
 	}
-
-	_, e = stmt.Exec(args...)
-	return
+	return stmt.Exec(args...)
 }
 
 func (s *Schema) Query(query string, args ...interface{}) (result *sql.Rows, e error) {
