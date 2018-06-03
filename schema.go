@@ -82,10 +82,12 @@ func (s *Schema) Exec(query string, args ...interface{}) (sql.Result, error) {
 	var e error
 	var stmt *sql.Stmt
 	stmt, e = s.Dal.Connection.Prepare(query)
-	defer stmt.Close()
+	fmt.Printf("Stmt: %v\n", stmt)
 	if e != nil {
+		fmt.Printf("Error: %s", e.Error())
 		return nil, e
 	}
+	defer stmt.Close()
 	return stmt.Exec(args...)
 }
 
